@@ -30,13 +30,24 @@ COPY core/ .
 # Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Create necessary directories
+RUN mkdir -p storage/logs bootstrap/cache
 
-# Generate app key
-RUN php artisan key:generate --force
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+if [ ! -f ".env" ]; then\n\
+  cp .env.production .env\n\
+fi\n\
+if ! grep -q "APP_KEY=base64:" .env; then\n\
+  php artisan key:generate --force\n\
+fi\n\
+php-fpm' > /start.sh && chmod +x /start.sh
 
 # Expose port
 EXPOSE 9000
 
-CMD ["php-fpm"]
+CMD ["/start.sh"]
