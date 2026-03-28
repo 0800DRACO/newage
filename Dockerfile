@@ -30,7 +30,9 @@ WORKDIR /var/www/html
 COPY core/composer.json core/composer.lock* ./
 
 # Install Laravel dependencies
-RUN composer install --no-dev --no-progress --no-interaction --prefer-stable
+# Note: COMPOSER_ALLOW_SUPERUSER=1 allows composer to run as root during Docker build
+# This is acceptable in Docker build context for installing dependencies
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-progress --no-interaction
 
 # Copy application files
 COPY core/ .
