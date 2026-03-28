@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # If you are having problems getting into the admin panel, uncomment the line
+    # above and change it from / to the actual path. For example if your
+    # shop is at http://example.com/shop then change it to: RewriteBase /shop/
+
+    # Redirect Trailing Slashes If Not A Folder Or File
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Direct all traffic to public folder
+    RewriteCond %{REQUEST_URI} ^/$ [L]
+    RewriteRule ^(.*)$ /public/index.php [QSA,L]
+</IfModule>
