@@ -42,45 +42,41 @@ RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views sto
     && chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Create startup script for runtime configuration
-RUN cat > /start.sh << 'EOFSCRIPT' && chmod +x /start.sh
-#!/bin/bash
-set -e
-
-# Copy environment file if not exists
-if [ ! -f ".env" ]; then
-    cp .env.production .env
-fi
-
-# Generate APP_KEY if missing
-if ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then
-    echo "[INFO] Generating APP_KEY..."
-    php artisan key:generate --force --no-interaction
-fi
-
-# Wait for database to be ready
-echo "[INFO] Waiting for database connection..."
-max_attempts=30
-attempt=0
-until php artisan tinker --execute="DB::connection()->getPDO()" 2>/dev/null || [ $attempt -eq $max_attempts ]; do
-    attempt=$((attempt + 1))
-    echo "[INFO] Database attempt $attempt/$max_attempts..."
-    sleep 1
-done
-
-if [ $attempt -eq $max_attempts ]; then
-    echo "[WARN] Database not available, continuing anyway..."
-fi
-
-# Run migrations if needed
-echo "[INFO] Running database migrations..."
-php artisan migrate --force --no-interaction
-
-# Run seeders if database is empty
-php artisan db:seed --force --no-interaction
-
-echo "[INFO] Application ready, starting PHP-FPM..."
-exec php-fpm
-EOFSCRIPT
+RUN printf '#!/bin/bash\n\
+# Copy environment file if not exists\n\
+if [ ! -f ".env" ]; then\n\
+    cp .env.production .env\n\
+fi\n\
+\n\
+# Generate APP_KEY if missing\n\
+if ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then\n\
+    echo "[INFO] Generating APP_KEY..."\n\
+    php artisan key:generate --force --no-interaction\n\
+fi\n\
+\n\
+# Wait for database to be ready\n\
+echo "[INFO] Waiting for database connection..."\n\
+max_attempts=30\n\
+attempt=0\n\
+until php artisan tinker --execute="DB::connection()->getPDO()" 2>/dev/null || [ $attempt -eq $max_attempts ]; do\n\
+    attempt=$((attempt + 1))\n\
+    echo "[INFO] Database attempt $attempt/$max_attempts..."\n\
+    sleep 1\n\
+done\n\
+\n\
+if [ $attempt -eq $max_attempts ]; then\n\
+    echo "[WARN] Database not available, continuing anyway..."\n\
+fi\n\
+\n\
+# Run migrations if needed\n\
+echo "[INFO] Running database migrations..."\n\
+php artisan migrate --force --no-interaction\n\
+\n\
+# Run seeders if database is empty\n\
+php artisan db:seed --force --no-interaction\n\
+\n\
+echo "[INFO] Application ready, starting PHP-FPM..."\n\
+exec php-fpm\n' > /start.sh && chmod +x /start.sh
 
 # Expose port
 EXPOSE 9000
