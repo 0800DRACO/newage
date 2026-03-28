@@ -44,37 +44,24 @@ RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views sto
 
 # Create startup script for runtime configuration
 RUN printf '#!/bin/bash\n\
+set -e\n\
 # Copy environment file if not exists\n\
 if [ ! -f ".env" ]; then\n\
+    echo "[INFO] Setting up .env from .env.production"\n\
     cp .env.production .env\n\
 fi\n\
 \n\
-# Generate APP_KEY if missing\n\
-if ! grep -q "^APP_KEY=base64:" .env 2>/dev/null; then\n\
+# Generate APP_KEY if needed\n\
+if grep -q "THIS_WILL_BE_GENERATED_AT_STARTUP" .env; then\n\
     echo "[INFO] Generating APP_KEY..."\n\
-    php artisan key:generate --force --no-interaction\n\
+    KEY=$(openssl rand -base64 32)\n\
+    sed -i "s/THIS_WILL_BE_GENERATED_AT_STARTUP/$KEY/" .env\n\
 fi\n\
 \n\
-# Wait for database to be ready\n\
-echo "[INFO] Waiting for database connection..."\n\
-max_attempts=30\n\
-attempt=0\n\
-until php artisan tinker --execute="DB::connection()->getPDO()" 2>/dev/null || [ $attempt -eq $max_attempts ]; do\n\
-    attempt=$((attempt + 1))\n\
-    echo "[INFO] Database attempt $attempt/$max_attempts..."\n\
-    sleep 1\n\
-done\n\
-\n\
-if [ $attempt -eq $max_attempts ]; then\n\
-    echo "[WARN] Database not available, continuing anyway..."\n\
-fi\n\
-\n\
-# Run migrations if needed\n\
-echo "[INFO] Running database migrations..."\n\
-php artisan migrate --force --no-interaction\n\
-\n\
-# Run seeders if database is empty\n\
-php artisan db:seed --force --no-interaction\n\
+# Fix storage permissions\n\
+echo "[INFO] Setting storage permissions..."\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true\n\
+chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache\n\
 \n\
 echo "[INFO] Application ready, starting PHP-FPM..."\n\
 exec php-fpm\n' > /start.sh && chmod +x /start.sh
