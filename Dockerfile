@@ -52,19 +52,19 @@ RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views sto
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Create simple Nginx configuration for Docker
-RUN mkdir -p /etc/nginx/conf.d && \
-    printf 'server {\n    listen 8080;\n    server_name _;\n    root /var/www/html/public;\n    index index.php index.html;\n    client_max_body_size 100M;\n\n    location / {\n        try_files $uri $uri/ /index.php?$query_string;\n    }\n\n    location ~ \.php$ {\n        fastcgi_pass 127.0.0.1:9000;\n        fastcgi_index index.php;\n        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n        include fastcgi_params;\n        fastcgi_hide_header X-Powered-By;\n    }\n\n    location ~ /\.(?!well-known).* {\n        deny all;\n    }\n}\n' > /etc/nginx/conf.d/default.conf
+# Copy Nginx and Supervisor configurations
+COPY nginx.conf.docker /etc/nginx/conf.d/default.conf
+COPY supervisord.conf.docker /etc/supervisor/supervisord.conf
 
-# Create Supervisor configuration
-RUN mkdir -p /etc/supervisor/conf.d /var/log/supervisor && \
-    printf '[supervisord]\nlogfile=/var/log/supervisor/supervisord.log\npidfile=/var/run/supervisord.pid\nnodaemon=true\n\n[program:php-fpm]\ncommand=php-fpm --nodaemonize\nautostart=true\nautorestart=unexpected\nstarterrors_max=0\nexitreboots=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n\n[program:nginx]\ncommand=/usr/sbin/nginx -g "daemon off;"\nautostart=true\nautorestart=unexpected\nstarterrors_max=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstopasgroup=true\nstopprogram=/bin/kill -TERM $group_pid\n' > /etc/supervisor/conf.d/app.conf
+# Create necessary directories for logs
+RUN mkdir -p /var/log/nginx /var/log/supervisor /var/run/supervisor \
+    && chown -R www-data:www-data /var/log/nginx
 
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check - with longer startup period for services to boot
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
     CMD curl -f http://localhost:8080/up || exit 1
 
 CMD ["/start.sh"]

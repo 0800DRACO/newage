@@ -1,0 +1,42 @@
+server {
+    listen 8080;
+    server_name _;
+    root /var/www/html/public;
+    index index.php index.html index.htm;
+    client_max_body_size 100M;
+
+    # Logs
+    access_log /dev/stdout combined;
+    error_log /dev/stderr warn;
+
+    # Don't expose nginx version
+    server_tokens off;
+
+    # Default location
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # PHP handling
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_connect_timeout 60s;
+        fastcgi_send_timeout 60s;
+        fastcgi_read_timeout 60s;
+    }
+
+    # Deny hidden files except well-known
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Allow static files
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
