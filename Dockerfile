@@ -27,8 +27,9 @@ WORKDIR /var/www/html
 # Copy composer files first for dependency installation
 COPY core/composer.json core/composer.lock* ./
 
-# Install Laravel dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+# Install Laravel dependencies with error handling
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-stable || \
+    (composer clear-cache && composer install --no-dev --optimize-autoloader --no-interaction --no-progress)
 
 # Copy application files
 COPY core/ .
