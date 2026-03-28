@@ -1,5 +1,8 @@
 FROM php:8.3-fpm
 
+# Cache invalidation: 2026-03-28-fixed-composer
+ARG BUILD_DATE
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
